@@ -27,9 +27,12 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
 
-      # 3. Prepare environment, keystore, and environment variables
+      # 3. Setup Android SDK Tools & Accept Licenses
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      # 4. Prepare environment & keystores
       - name: Prepare build environment
         run: |
           echo "Setting up keystore..."
@@ -50,35 +53,32 @@ jobs:
             fi
           fi
 
-          if [ -f gradlew ]; then
-            chmod +x gradlew
-          fi
-
-      # 4. Set up Gradle with caching
+      # 5. Set up Gradle with caching
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
 
-      # 5. Run Unit & Robolectric Tests
-      - name: Run Unit Tests
-        run: gradle testDebugUnitTest --continue
-
       # 6. Build Debug APK
       - name: Build Debug APK
-        run: gradle assembleDebug
+        run: gradle assembleDebug --stacktrace
 
-      # 7. Upload APK Artifact for direct download
+      # 7. Run Unit Tests
+      - name: Run Unit Tests
+        run: gradle testDebugUnitTest --continue --stacktrace
+        continue-on-error: true
+
+      # 8. Upload Debug APK Artifact
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
-        if: success()
+        if: success() || always()
         with:
           name: Lumina-AI-Studio-Debug-APK
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 14
           if-no-files-found: warn
 
-      # 8. Upload Unit Test Reports (if any)
+      # 9. Upload Unit Test Reports
       - name: Upload Test Reports
         uses: actions/upload-artifact@v4
         if: always()

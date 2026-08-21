@@ -32,7 +32,7 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      # 3. Setup Android SDK Environment & Accept Licenses (Native - No Node.js wrappers)
+      # 3. Setup Android SDK Environment & Accept Licenses
       - name: Configure Android SDK & Licenses
         run: |
           export ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}
@@ -40,7 +40,7 @@ jobs:
           yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools" || true
 
-      # 4. Prepare Environment, Keystore, and local.properties
+      # 4. Prepare Environment, Keystores, and CI Gradle Settings
       - name: Prepare build environment
         run: |
           ANDROID_DIR=${ANDROID_HOME:-/usr/local/lib/android/sdk}
@@ -64,7 +64,12 @@ jobs:
             fi
           fi
 
-      # 5. Install Gradle 8.11.1 (Native - zero Node.js deprecations)
+          echo "Optimizing Gradle properties for CI & KSP daemon..."
+          sed -i 's/kotlin.compiler.execution.strategy=in-process/kotlin.compiler.execution.strategy=daemon/g' gradle.properties || true
+          sed -i 's/org.gradle.configuration-cache=true/org.gradle.configuration-cache=false/g' gradle.properties || true
+          echo "ksp.useKSP2=true" >> gradle.properties
+
+      # 5. Install Gradle 8.11.1
       - name: Setup Gradle CLI
         run: |
           if ! command -v gradle &> /dev/null; then
@@ -79,12 +84,12 @@ jobs:
       # 6. Build Debug APK
       - name: Build Debug APK
         run: |
-          gradle assembleDebug --no-configuration-cache --no-daemon --stacktrace
+          gradle assembleDebug --stacktrace
 
       # 7. Run Unit Tests (Non-blocking)
       - name: Run Unit Tests
         run: |
-          gradle testDebugUnitTest --no-configuration-cache --no-daemon --continue || true
+          gradle testDebugUnitTest --continue || true
         continue-on-error: true
 
       # 8. Upload Debug APK Artifact

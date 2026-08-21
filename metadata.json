@@ -1,0 +1,7 @@
+{
+  "name": "AI Image & Video Studio",
+  "description": "AI Text-to-Image and Zoom Video Generator with customizable art styles, motion animation, prompt enhancer, and cloud inference.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

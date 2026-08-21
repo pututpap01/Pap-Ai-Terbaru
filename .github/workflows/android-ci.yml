@@ -1,0 +1,75 @@
+name: Android CI/CD Build & Test
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Test Android App
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repository code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Set up JDK 17
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # 3. Set up Gradle with caching for fast builds
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # 4. Prepare environment & decode debug keystore
+      - name: Prepare build environment
+        run: |
+          if [ -f debug.keystore.base64 ]; then
+            echo "Decoding debug keystore..."
+            base64 -d debug.keystore.base64 > debug.keystore
+          fi
+          if [ ! -f .env ] && [ -f .env.example ]; then
+            echo "Setting up .env from .env.example..."
+            cp .env.example .env
+          fi
+          if [ ! -f gradlew ]; then
+            gradle wrapper
+          fi
+          chmod +x gradlew
+
+      # 5. Run Unit & Robolectric Tests
+      - name: Run Unit Tests
+        run: ./gradlew testDebugUnitTest --continue
+
+      # 6. Build Debug APK
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
+
+      # 7. Upload APK Artifact for direct download
+      - name: Upload Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: Lumina-AI-Studio-Debug-APK
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+
+      # 8. Upload Unit Test Reports (if any)
+      - name: Upload Test Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-reports
+          path: app/build/reports/tests/testDebugUnitTest/
+          retention-days: 7
